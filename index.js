@@ -12,6 +12,8 @@ const queue = new pQueue({ concurrency: 10 });
 const promises = [];
 
 input.on('line', function (line) {
+    if (!line.length)
+        return;
     let tweet = line;
     tweet = tweet.replace(/#/g, '');
     promises.push(queue.add(() => {
@@ -19,15 +21,13 @@ input.on('line', function (line) {
     }));
 });
 
-input.on('end', (err) => {
+input.on('end', () => {
     Promise.all(promises)
-    .then((results) => {
-        results.forEach((result) => {
-            fs.appendFileSync(output, result.req + ',' + result.rsp.found + '\n');
-        });
+    .then(() => {
+        console.log('done');
     })
     .catch((err) => {
-        console.log(err.stack);
+        console.log(JSON.stringify(err));
     });
 });
 
@@ -36,9 +36,10 @@ function requestAPI(text) {
     return new Promise((resolve, reject) => {
         request(apiEndPoint, (req, res) => {
             if (!res || res.statusCode !== 200) {
-                reject(res);
+                return reject({req: text, rsp: res});
             }
-            resolve({req: text, rsp: JSON.parse(res.body).rsp});
+            fs.appendFileSync(output, text + ',' + JSON.parse(res.body).rsp.found + '\n');
+            return resolve();
         });
     });
 }
